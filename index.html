@@ -9,40 +9,32 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #fff; color: #000; font-family: Pretendard, -apple-system, sans-serif; font-size: 14px; line-height: 1.4; }
   .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 80px; }
-  header { display: flex; align-items: baseline; justify-content: space-between; padding: 24px 0 12px; border-bottom: 1px solid #000; }
-  h1 { font-size: 15px; font-weight: 600; }
-  nav button { font: inherit; background: none; border: 1px solid #000; color: #000; padding: 2px 10px; cursor: pointer; }
-  nav button + button { margin-left: 4px; }
-  .row { display: grid; grid-template-columns: 28px 22px 1fr; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #e5e5e5; font-variant-numeric: tabular-nums; }
-  .row.mon { border-top: 1px solid #000; margin-top: -1px; }
-  .d { text-align: right; }
-  .w { color: #666; font-size: 12px; }
-  .wk .d, .wk .w { color: #aaa; }
+  .row { display: grid; grid-template-columns: 32px 28px 1fr; gap: 12px; align-items: baseline; padding: 6px 8px; border-bottom: 1px solid #e5e5e5; font-variant-numeric: tabular-nums; }
+  .head { position: sticky; top: 0; background: #fff; padding-top: 24px; border-bottom: 1px solid #000; font-size: 12px; color: #666; }
+  .row.first { border-top: 1px solid #000; margin-top: -1px; }
+  .m, .d { text-align: right; }
   .past { color: #999; }
-  .today .d, .today .w { background: #000; color: #fff; }
-  .today .d { padding-right: 3px; }
+  .today .d { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+  .row:not(.head):hover { background: #000; color: #fff; }
+  .row:not(.head):hover .sub { color: #fff; }
   ul { list-style: none; }
   li { display: flex; gap: 8px; align-items: baseline; }
   li + li { margin-top: 3px; }
   .tab { align-self: stretch; width: 4px; flex-shrink: 0; }
   .sub { font-size: 12px; color: #666; white-space: nowrap; }
-  .done .t { text-decoration: line-through; color: #999; }
+  .done .t { text-decoration: line-through; opacity: .5; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1 id="month"></h1>
-    <nav><button id="prev" aria-label="지난 달">←</button><button id="now">이번 달</button><button id="next" aria-label="다음 달">→</button></nav>
-  </header>
+  <div class="row head"><span class="m">월</span><span class="d">일</span><span>일정</span></div>
   <main id="list"></main>
 </div>
 <script src="data.js"></script>
 <script>
-const NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = new Date(); today.setHours(0, 0, 0, 0);
-let offset = 0;
+const todayKey = iso(today);
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
@@ -51,24 +43,21 @@ function row(d) {
   const items = TASKS.filter(t => t.date === key).map(t =>
     `<li class="${t.done ? 'done' : ''}"><span class="tab" style="background:${SUBJECTS[t.subject] || '#000'}"></span><span class="t">${esc(t.title)}</span><span class="sub">${esc(t.subject || '')}</span></li>`
   ).join('');
-  const day = d.getDay();
-  const cls = [day === 1 && d.getDate() > 1 ? 'mon' : '', day % 6 === 0 ? 'wk' : '',
-    key === iso(today) ? 'today' : d < today ? 'past' : ''].join(' ');
-  return `<div class="row ${cls}" id="d${key}"><span class="d">${d.getDate()}</span><span class="w">${NAMES[day]}</span><ul>${items}</ul></div>`;
+  const first = d.getDate() === 1;
+  const cls = [first ? 'first' : '', key === todayKey ? 'today' : key < todayKey ? 'past' : ''].join(' ');
+  return `<div class="row ${cls}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span>${items ? `<ul>${items}</ul>` : '<span>-</span>'}</div>`;
 }
 
-function render() {
-  const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
-  const n = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
-  document.getElementById('month').textContent = `${first.getFullYear()}. ${first.getMonth() + 1}`;
-  document.getElementById('list').innerHTML =
-    Array.from({ length: n }, (_, i) => row(new Date(first.getFullYear(), first.getMonth(), i + 1))).join('');
-}
-
-document.getElementById('prev').onclick = () => { offset--; render(); };
-document.getElementById('next').onclick = () => { offset++; render(); };
-document.getElementById('now').onclick = () => { offset = 0; render(); };
-render();
+// 범위: 이번 달(또는 가장 이른 일정의 달) 1일 ~ 다음 달(또는 가장 늦은 일정의 달) 말일
+const dates = TASKS.map(t => t.date).sort();
+const startKey = [dates[0], todayKey].filter(Boolean).sort()[0];
+const endKey = [dates.at(-1), iso(new Date(today.getFullYear(), today.getMonth() + 1, 1))].filter(Boolean).sort().at(-1);
+const [sy, sm] = startKey.split('-').map(Number);
+const [ey, em] = endKey.split('-').map(Number);
+const rows = [];
+for (let d = new Date(sy, sm - 1, 1), end = new Date(ey, em, 0); d <= end; d.setDate(d.getDate() + 1)) rows.push(row(d));
+document.getElementById('list').innerHTML = rows.join('');
+document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'center' });
 </script>
 </body>
 </html>
