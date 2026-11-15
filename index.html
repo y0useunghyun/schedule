@@ -86,7 +86,8 @@ const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 async function save(next) {
   let token = getToken();
   if (!token) {
-    token = (prompt('XXXX') || '').trim();
+    // 폰 자동 대문자(Github_pat_)·공백 보정
+    token = (prompt('XXXX') || '').replace(/\s/g, '').replace(/^(github_pat_|ghp_)/i, m => m.toLowerCase());
     if (!token) { status('저장 안 됨'); return false; }
     setToken(token);
   }
