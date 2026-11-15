@@ -119,7 +119,9 @@ function edit(rowEl) {
   ta.oninput = () => { ta.rows = Math.max(1, ta.value.split('\n').length + 1); };
   rowEl.classList.add('editing');
   rowEl.querySelector('.c').replaceChildren(ta);
-  ta.focus();
+  ta.focus({ preventScroll: true });
+  // 고치는 줄을 머리 바로 밑으로 올림 → 폰 키보드에 안 가려짐
+  setTimeout(() => rowEl.scrollIntoView({ block: 'start' }), 300);
   ta.onblur = async () => {
     if (ta.value.trim() === before.trim()) { render(); return; }
     const prev = tasks;
