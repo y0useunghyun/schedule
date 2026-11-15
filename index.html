@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>일정</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #fff; color: #000; font-family: Pretendard, -apple-system, sans-serif; font-size: 15px; line-height: 1.45; }
+  header { display: flex; align-items: baseline; justify-content: space-between; padding: 20px 16px; border-bottom: 1px solid #000; }
+  h1 { font-size: 15px; font-weight: 600; }
+  nav button { font: inherit; background: none; border: 1px solid #000; color: #000; padding: 2px 10px; cursor: pointer; }
+  nav button + button { margin-left: 4px; }
+  .week { display: grid; grid-template-columns: repeat(5, 1fr); min-height: calc(100vh - 64px); }
+  .day { border-right: 1px solid #000; }
+  .day:last-child { border-right: 0; }
+  .day h2 { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #000; }
+  .day.today h2 { background: #000; color: #fff; }
+  .day.past { color: #999; }
+  ul { list-style: none; }
+  li { display: flex; border-bottom: 1px solid #ddd; }
+  .tab { width: 6px; flex-shrink: 0; }
+  .body { padding: 8px 10px; }
+  .subject { font-size: 11px; color: #666; }
+  .done .title { text-decoration: line-through; color: #999; }
+  .dday { font-size: 11px; margin-left: 6px; }
+  .empty { padding: 40px 16px; text-align: center; color: #999; grid-column: 1 / -1; }
+  @media (max-width: 700px) {
+    .week { grid-template-columns: 1fr; min-height: 0; }
+    .day { border-right: 0; border-bottom: 1px solid #000; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="range"></h1>
+  <nav><button id="prev" aria-label="지난 주">←</button><button id="now">이번 주</button><button id="next" aria-label="다음 주">→</button></nav>
+</header>
+<main class="week" id="week"></main>
+<script src="data.js"></script>
+<script>
+const DAY = 86400000;
+const NAMES = ['월', '화', '수', '목', '금'];
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const md = d => `${d.getMonth() + 1}/${d.getDate()}`;
+const today = new Date(); today.setHours(0, 0, 0, 0);
+const thisMonday = new Date(today - ((today.getDay() + 6) % 7) * DAY);
+let offset = 0;
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function render() {
+  const mon = new Date(thisMonday.getTime() + offset * 7 * DAY);
+  mon.setHours(0, 0, 0, 0);
+  const days = NAMES.map((_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
+  document.getElementById('range').textContent = `${md(days[0])} – ${md(days[4])}`;
+  const html = days.map((d, i) => {
+    const key = iso(d);
+    const items = TASKS.filter(t => t.date === key).map(t => {
+      const diff = Math.round((d - today) / DAY);
+      const dday = !t.done && diff >= 0 ? `<span class="dday">${diff === 0 ? 'D-day' : 'D-' + diff}</span>` : '';
+      return `<li class="${t.done ? 'done' : ''}"><span class="tab" style="background:${SUBJECTS[t.subject] || '#000'}"></span>
+        <div class="body"><div class="subject">${esc(t.subject || '')}</div><div class="title">${esc(t.title)}${dday}</div></div></li>`;
+    }).join('');
+    const cls = key === iso(today) ? 'today' : d < today ? 'past' : '';
+    return `<section class="day ${cls}"><h2><span>${NAMES[i]}</span><span>${md(d)}</span></h2><ul>${items}</ul></section>`;
+  }).join('');
+  document.getElementById('week').innerHTML = TASKS.length ? html : '<p class="empty">이번 주 과제를 알려주세요</p>' ;
+}
+
+document.getElementById('prev').onclick = () => { offset--; render(); };
+document.getElementById('next').onclick = () => { offset++; render(); };
+document.getElementById('now').onclick = () => { offset = 0; render(); };
+render();
+</script>
+</body>
+</html>
