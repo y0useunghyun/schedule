@@ -4,32 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>일정</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #fff; color: #000; font-family: Pretendard, -apple-system, sans-serif; font-size: 14px; line-height: 1.4; }
-  .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 80px; }
-  .row { display: grid; grid-template-columns: 32px 28px 1fr; gap: 12px; align-items: baseline; padding: 6px 8px; border-bottom: 1px solid #e5e5e5; font-variant-numeric: tabular-nums; }
-  .head { position: sticky; top: 0; background: #fff; padding-top: 24px; border-bottom: 1px solid #000; font-size: 12px; color: #666; }
-  .row.first { border-top: 1px solid #000; margin-top: -1px; }
+  body { background: #fff; color: #000; font-family: "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", sans-serif; font-size: 19px; line-height: 1.17; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
+  select { width: 100%; font: 11px Arial, sans-serif; margin-bottom: 28px; }
+  .row { display: grid; grid-template-columns: 34px 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .arrows { margin-bottom: 2px; }
   .m, .d { text-align: right; }
+  .first { margin-top: 1.17em; }
   .past { color: #999; }
-  .today .d { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-  .row:not(.head):hover { background: #000; color: #fff; }
-  .row:not(.head):hover .sub { color: #fff; }
-  ul { list-style: none; }
-  li { display: flex; gap: 8px; align-items: baseline; }
-  li + li { margin-top: 3px; }
-  .tab { align-self: stretch; width: 4px; flex-shrink: 0; }
-  .sub { font-size: 12px; color: #666; white-space: nowrap; }
-  .done .t { text-decoration: line-through; opacity: .5; }
+  .today .d { text-decoration: underline; text-underline-offset: 3px; }
+  .row:not(.arrows):hover { background: #000; color: #fff; }
+  .tags { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+  .tag { font: 10px/1 Arial, sans-serif; border: 1px solid currentColor; border-radius: 99px; padding: 1px 4px; white-space: nowrap; position: relative; top: -2px; }
+  .done .t { text-decoration: line-through; }
+  .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; }
+  .bar button { font: 11px Arial, sans-serif; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="row head"><span class="m">월</span><span class="d">일</span><span>일정</span></div>
+  <select id="jump" aria-label="달 이동"></select>
+  <div class="row arrows"><span></span><span class="m">↓</span><span class="d">↓</span><span>↓</span></div>
   <main id="list"></main>
 </div>
+<div class="bar"><button id="top">back to top</button><button id="now">today</button></div>
 <script src="data.js"></script>
 <script>
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -40,12 +40,12 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<':
 
 function row(d) {
   const key = iso(d);
-  const items = TASKS.filter(t => t.date === key).map(t =>
-    `<li class="${t.done ? 'done' : ''}"><span class="tab" style="background:${SUBJECTS[t.subject] || '#000'}"></span><span class="t">${esc(t.title)}</span><span class="sub">${esc(t.subject || '')}</span></li>`
-  ).join('');
+  const tasks = TASKS.filter(t => t.date === key);
+  const tags = tasks.map(t => `<span class="tag" style="color:${SUBJECTS[t.subject] || 'inherit'}">${esc(t.subject || '·')}</span>`).join('');
+  const titles = tasks.map(t => `<div class="${t.done ? 'done' : ''}"><span class="t">${esc(t.title)}</span></div>`).join('') || '-';
   const first = d.getDate() === 1;
   const cls = [first ? 'first' : '', key === todayKey ? 'today' : key < todayKey ? 'past' : ''].join(' ');
-  return `<div class="row ${cls}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span>${items ? `<ul>${items}</ul>` : '<span>-</span>'}</div>`;
+  return `<div class="row ${cls}" id="d${key}"><span class="tags">${tags}</span><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><div>${titles}</div></div>`;
 }
 
 // 범위: 이번 달(또는 가장 이른 일정의 달) 1일 ~ 다음 달(또는 가장 늦은 일정의 달) 말일
@@ -54,10 +54,20 @@ const startKey = [dates[0], todayKey].filter(Boolean).sort()[0];
 const endKey = [dates.at(-1), iso(new Date(today.getFullYear(), today.getMonth() + 1, 1))].filter(Boolean).sort().at(-1);
 const [sy, sm] = startKey.split('-').map(Number);
 const [ey, em] = endKey.split('-').map(Number);
-const rows = [];
-for (let d = new Date(sy, sm - 1, 1), end = new Date(ey, em, 0); d <= end; d.setDate(d.getDate() + 1)) rows.push(row(d));
+const rows = [], months = [];
+for (let d = new Date(sy, sm - 1, 1), end = new Date(ey, em, 0); d <= end; d.setDate(d.getDate() + 1)) {
+  if (d.getDate() === 1) months.push(`<option value="d${iso(d)}">${d.getFullYear()}. ${d.getMonth() + 1}</option>`);
+  rows.push(row(d));
+}
 document.getElementById('list').innerHTML = rows.join('');
-document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'center' });
+const jump = document.getElementById('jump');
+jump.innerHTML = months.join('');
+jump.value = `d${todayKey.slice(0, 8)}01`;
+jump.onchange = () => document.getElementById(jump.value).scrollIntoView();
+document.getElementById('top').onclick = () => scrollTo(0, 0);
+const goToday = () => document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'center' });
+document.getElementById('now').onclick = goToday;
+goToday();
 </script>
 </body>
 </html>
