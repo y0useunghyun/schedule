@@ -1,11 +1,4 @@
-// 할 일은 여기만 고치면 됨. date: "YYYY-MM-DD", subject는 SUBJECTS의 이름.
-const SUBJECTS = {
-  "웹앱디자인": "#2f6fde",
-  "책디자인": "#c8372d",
-  "시각디자인 워크숍": "#1e8a5a",
-  "다차원타이포그래피": "#8a3fb0",
-  "3D": "#d17a00",
-};
+// 할 일은 여기만 고치면 됨. date: "YYYY-MM-DD". subject는 기록용(화면엔 안 보임).
 
 const TASKS = [
   { date: "2026-11-18", subject: "웹앱디자인", title: "하루 끝까지 개발" },

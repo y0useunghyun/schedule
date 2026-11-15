@@ -9,14 +9,12 @@
   body { background: #fff; color: #000; font-family: "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", sans-serif; font-size: 19px; line-height: 1.17; }
   .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
   select { width: 100%; font: 11px Arial, sans-serif; margin-bottom: 28px; }
-  .row { display: grid; grid-template-columns: 34px 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .row { display: grid; grid-template-columns: 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; }
   .m, .d { text-align: right; }
   .first { margin-top: 1.17em; }
   .past { color: #999; }
   .today .d { text-decoration: underline; text-underline-offset: 3px; }
   .row:hover { background: #000; color: #fff; }
-  .tags { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
-  .tag { font: 10px/1 Arial, sans-serif; border: 1px solid currentColor; border-radius: 99px; padding: 1px 4px; white-space: nowrap; position: relative; top: -2px; }
   .done .t { text-decoration: line-through; }
   .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; }
   .bar button { font: 11px Arial, sans-serif; }
@@ -39,11 +37,10 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<':
 function row(d) {
   const key = iso(d);
   const tasks = TASKS.filter(t => t.date === key);
-  const tags = tasks.map(t => `<span class="tag" style="color:${SUBJECTS[t.subject] || 'inherit'}">${esc(t.subject || '·')}</span>`).join('');
   const titles = tasks.map(t => `<div class="${t.done ? 'done' : ''}"><span class="t">${esc(t.title)}</span></div>`).join('') || '-';
   const first = d.getDate() === 1;
   const cls = [first ? 'first' : '', key === todayKey ? 'today' : key < todayKey ? 'past' : ''].join(' ');
-  return `<div class="row ${cls}" id="d${key}"><span class="tags">${tags}</span><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><div>${titles}</div></div>`;
+  return `<div class="row ${cls}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><div>${titles}</div></div>`;
 }
 
 // 범위: 이번 달(또는 가장 이른 일정의 달) 1일 ~ 다음 달(또는 가장 늦은 일정의 달) 말일
