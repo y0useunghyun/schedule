@@ -87,7 +87,7 @@ const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 async function save(next) {
   let token = getToken();
   if (!token) {
-    token = (prompt('주인 외에는 입력하면 안 됩니다.\n열쇠를 붙여넣어 주세요') || '').trim();
+    token = (prompt('XXXX') || '').trim();
     if (!token) { status('저장 안 됨'); return false; }
     setToken(token);
   }
