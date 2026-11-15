@@ -8,65 +8,61 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #fff; color: #000; font-family: Pretendard, -apple-system, sans-serif; font-size: 14px; line-height: 1.4; }
-  header { display: flex; align-items: baseline; justify-content: space-between; padding: 20px 16px; border-bottom: 1px solid #000; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 80px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; padding: 24px 0 12px; border-bottom: 1px solid #000; }
   h1 { font-size: 15px; font-weight: 600; }
   nav button { font: inherit; background: none; border: 1px solid #000; color: #000; padding: 2px 10px; cursor: pointer; }
   nav button + button { margin-left: 4px; }
-  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-  .head { font-size: 12px; padding: 6px 8px; border-bottom: 1px solid #000; }
-  .cell { min-height: 110px; border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 4px 0 6px; }
-  .cell:nth-child(7n) { border-right: 0; }
-  .num { display: inline-block; font-size: 12px; margin: 0 6px 4px; padding: 0 4px; }
-  .out { color: #ccc; }
-  .past .num { color: #999; }
-  .today .num { background: #000; color: #fff; }
+  .row { display: grid; grid-template-columns: 28px 22px 1fr; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #e5e5e5; font-variant-numeric: tabular-nums; }
+  .row.mon { border-top: 1px solid #000; margin-top: -1px; }
+  .d { text-align: right; }
+  .w { color: #666; font-size: 12px; }
+  .wk .d, .wk .w { color: #aaa; }
+  .past { color: #999; }
+  .today .d, .today .w { background: #000; color: #fff; }
+  .today .d { padding-right: 3px; }
   ul { list-style: none; }
-  li { display: flex; font-size: 12px; margin: 0 4px 2px; }
-  .tab { width: 4px; flex-shrink: 0; }
-  .title { padding: 1px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .done .title { text-decoration: line-through; color: #999; }
-  @media (max-width: 700px) {
-    .cell { min-height: 72px; }
-    li { font-size: 10px; margin: 0 2px 2px; }
-    .title { padding: 0 3px; }
-  }
+  li { display: flex; gap: 8px; align-items: baseline; }
+  li + li { margin-top: 3px; }
+  .tab { align-self: stretch; width: 4px; flex-shrink: 0; }
+  .sub { font-size: 12px; color: #666; white-space: nowrap; }
+  .done .t { text-decoration: line-through; color: #999; }
 </style>
 </head>
 <body>
-<header>
-  <h1 id="month"></h1>
-  <nav><button id="prev" aria-label="지난 달">←</button><button id="now">이번 달</button><button id="next" aria-label="다음 달">→</button></nav>
-</header>
-<main class="grid" id="cal"></main>
+<div class="wrap">
+  <header>
+    <h1 id="month"></h1>
+    <nav><button id="prev" aria-label="지난 달">←</button><button id="now">이번 달</button><button id="next" aria-label="다음 달">→</button></nav>
+  </header>
+  <main id="list"></main>
+</div>
 <script src="data.js"></script>
 <script>
-const NAMES = ['월', '화', '수', '목', '금', '토', '일'];
+const NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = new Date(); today.setHours(0, 0, 0, 0);
 let offset = 0;
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
-function cell(d, month) {
+function row(d) {
   const key = iso(d);
   const items = TASKS.filter(t => t.date === key).map(t =>
-    `<li class="${t.done ? 'done' : ''}" title="${esc(t.subject || '')}"><span class="tab" style="background:${SUBJECTS[t.subject] || '#000'}"></span><span class="title">${esc(t.title)}</span></li>`
+    `<li class="${t.done ? 'done' : ''}"><span class="tab" style="background:${SUBJECTS[t.subject] || '#000'}"></span><span class="t">${esc(t.title)}</span><span class="sub">${esc(t.subject || '')}</span></li>`
   ).join('');
-  const cls = d.getMonth() !== month ? 'out' : key === iso(today) ? 'today' : d < today ? 'past' : '';
-  return `<div class="cell ${cls}"><span class="num">${d.getDate()}</span><ul>${items}</ul></div>`;
+  const day = d.getDay();
+  const cls = [day === 1 && d.getDate() > 1 ? 'mon' : '', day % 6 === 0 ? 'wk' : '',
+    key === iso(today) ? 'today' : d < today ? 'past' : ''].join(' ');
+  return `<div class="row ${cls}" id="d${key}"><span class="d">${d.getDate()}</span><span class="w">${NAMES[day]}</span><ul>${items}</ul></div>`;
 }
 
 function render() {
   const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
-  const month = first.getMonth();
-  document.getElementById('month').textContent = `${first.getFullYear()}. ${month + 1}`;
-  const start = new Date(first);
-  start.setDate(1 - (first.getDay() + 6) % 7);
-  const days = [];
-  const last = new Date(first.getFullYear(), month + 1, 0);
-  for (let d = new Date(start); d <= last || days.length % 7; d.setDate(d.getDate() + 1)) days.push(new Date(d));
-  document.getElementById('cal').innerHTML =
-    NAMES.map(n => `<div class="head">${n}</div>`).join('') + days.map(d => cell(d, month)).join('');
+  const n = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  document.getElementById('month').textContent = `${first.getFullYear()}. ${first.getMonth() + 1}`;
+  document.getElementById('list').innerHTML =
+    Array.from({ length: n }, (_, i) => row(new Date(first.getFullYear(), first.getMonth(), i + 1))).join('');
 }
 
 document.getElementById('prev').onclick = () => { offset--; render(); };
