@@ -18,7 +18,6 @@
   .row.editing, .row.editing:hover { background: #fff; color: #000; }
   textarea { font: inherit; color: inherit; width: 100%; border: 0; border-bottom: 1px solid #000; outline: 0; resize: none; background: none; display: block; }
   .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; align-items: center; font: 11px Arial, sans-serif; }
-  .bar button { font: inherit; }
 </style>
 </head>
 <body>
@@ -26,7 +25,7 @@
   <select id="jump" aria-label="달 이동"></select>
   <main id="list"></main>
 </div>
-<div class="bar"><button id="top">back to top</button><button id="now">today</button><span id="status"></span></div>
+<div class="bar"><span id="status"></span></div>
 <script src="data.js"></script>
 <script>
 const REPO = 'y0useunghyun/schedule';
@@ -134,9 +133,7 @@ document.getElementById('list').addEventListener('click', e => {
   if (r) edit(r);
 });
 document.getElementById('jump').onchange = e => document.getElementById(e.target.value).scrollIntoView();
-document.getElementById('top').onclick = () => scrollTo(0, 0);
 const goToday = () => document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'center' });
-document.getElementById('now').onclick = goToday;
 render();
 goToday();
 
