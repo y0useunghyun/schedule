@@ -19,8 +19,9 @@
   .past { color: #999; }
   .today .d { text-decoration: underline; text-underline-offset: 3px; }
   #list .row:hover { background: #000; color: #fff; }
-  .row.editing, .row.editing:hover { background: #fff; color: #000; }
-  textarea { font: inherit; color: inherit; width: 100%; border: 0; border-bottom: 1px solid #000; outline: 0; resize: none; background: none; display: block; }
+  #list .row:focus-within { background: #fff; color: #000; }
+  textarea { font: inherit; color: inherit; width: 100%; border: 0; outline: 0; resize: none; background: none; display: block; overflow: hidden; border-radius: 0; }
+  textarea::placeholder { color: inherit; opacity: 1; }
   .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; align-items: center; font: 11px Arial, sans-serif; }
   @media (max-width: 600px) { .row { grid-template-columns: 48px 22px 1fr; column-gap: 10px; } }
 </style>
@@ -49,10 +50,10 @@ function setToken(v) { try { localStorage.setItem(TOKEN_KEY, v); } catch {} }
 
 function row(d) {
   const key = iso(d);
-  const titles = tasks.filter(t => t.date === key).map(t => `<div>${esc(line(t))}</div>`).join('') || '-';
+  const text = tasks.filter(t => t.date === key).map(line).join('\n');
   const first = d.getDate() === 1;
   const cls = [first ? 'first' : '', key === todayKey ? 'today' : key < todayKey ? 'past' : ''].join(' ');
-  return `<div class="row ${cls}" data-date="${key}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><div class="c">${titles}</div></div>`;
+  return `<div class="row ${cls}" data-date="${key}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><textarea rows="1" placeholder="-" aria-label="${key} 일정">${esc(text)}</textarea></div>`;
 }
 
 // 범위: 이번 달(또는 가장 이른 일정의 달) 1일 ~ 다음 달(또는 가장 늦은 일정의 달) 말일
@@ -109,32 +110,23 @@ async function save(next) {
   }
 }
 
-function edit(rowEl) {
-  if (rowEl.classList.contains('editing')) return;
-  const date = rowEl.dataset.date;
-  const before = tasks.filter(t => t.date === date).map(line).join('\n');
-  const ta = document.createElement('textarea');
-  ta.value = before;
-  ta.rows = Math.max(1, before.split('\n').length + 1);
-  ta.oninput = () => { ta.rows = Math.max(1, ta.value.split('\n').length + 1); };
-  rowEl.classList.add('editing');
-  rowEl.querySelector('.c').replaceChildren(ta);
-  ta.focus({ preventScroll: true });
-  // 고치는 줄을 머리 바로 밑으로 올림 → 폰 키보드에 안 가려짐
-  setTimeout(() => rowEl.scrollIntoView({ block: 'start' }), 300);
-  ta.onblur = async () => {
-    if (ta.value.trim() === before.trim()) { render(); return; }
-    const prev = tasks;
-    tasks = [...tasks.filter(t => t.date !== date), ...parse(date, ta.value)];
-    render();
-    if (!(await save(tasks))) { tasks = prev; render(); }
-  };
-}
+// 모든 날짜 칸이 항상 열린 입력칸. 칸 밖으로 나가면 그 날만 저장.
+const autosize = ta => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+const autosizeAll = () => document.querySelectorAll('#list textarea').forEach(autosize);
+let queue = Promise.resolve();
 
-document.getElementById('list').addEventListener('click', e => {
-  const r = e.target.closest('.row');
-  if (r) edit(r);
+const list = document.getElementById('list');
+list.addEventListener('input', e => autosize(e.target));
+list.addEventListener('focusout', e => {
+  const ta = e.target;
+  const date = ta.closest('.row').dataset.date;
+  const before = tasks.filter(t => t.date === date).map(line).join('\n');
+  if (ta.value.trim() === before.trim()) return;
+  tasks = [...tasks.filter(t => t.date !== date), ...parse(date, ta.value)];
+  const snapshot = tasks;
+  queue = queue.then(() => save(snapshot));
 });
+addEventListener('resize', autosizeAll);
 const goToday = () => document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'start' });
 // 위 「26.11」은 지금 맨 위에 걸린 줄의 달을 따라감
 const ym = document.getElementById('ym');
@@ -146,6 +138,7 @@ function updateYm() {
 }
 addEventListener('scroll', updateYm, { passive: true });
 render();
+autosizeAll();
 goToday();
 updateYm();
 
@@ -154,7 +147,11 @@ const token = getToken();
 if (token) {
   fetch(API, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.raw' }, cache: 'no-store' })
     .then(r => r.ok ? r.text() : Promise.reject())
-    .then(txt => { tasks = JSON.parse(txt.slice(txt.indexOf('['), txt.lastIndexOf(']') + 1)); render(); })
+    .then(txt => {
+      if (document.activeElement?.tagName === 'TEXTAREA') return; // 쓰는 중이면 덮어쓰지 않음
+      tasks = JSON.parse(txt.slice(txt.indexOf('['), txt.lastIndexOf(']') + 1));
+      render(); autosizeAll();
+    })
     .catch(() => {});
 }
 </script>
