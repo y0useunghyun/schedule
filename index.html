@@ -7,65 +7,66 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #fff; color: #000; font-family: Pretendard, -apple-system, sans-serif; font-size: 15px; line-height: 1.45; }
+  body { background: #fff; color: #000; font-family: Pretendard, -apple-system, sans-serif; font-size: 14px; line-height: 1.4; }
   header { display: flex; align-items: baseline; justify-content: space-between; padding: 20px 16px; border-bottom: 1px solid #000; }
   h1 { font-size: 15px; font-weight: 600; }
   nav button { font: inherit; background: none; border: 1px solid #000; color: #000; padding: 2px 10px; cursor: pointer; }
   nav button + button { margin-left: 4px; }
-  .week { display: grid; grid-template-columns: repeat(5, 1fr); min-height: calc(100vh - 64px); }
-  .day { border-right: 1px solid #000; }
-  .day:last-child { border-right: 0; }
-  .day h2 { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #000; }
-  .day.today h2 { background: #000; color: #fff; }
-  .day.past { color: #999; }
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .head { font-size: 12px; padding: 6px 8px; border-bottom: 1px solid #000; }
+  .cell { min-height: 110px; border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 4px 0 6px; }
+  .cell:nth-child(7n) { border-right: 0; }
+  .num { display: inline-block; font-size: 12px; margin: 0 6px 4px; padding: 0 4px; }
+  .out { color: #ccc; }
+  .past .num { color: #999; }
+  .today .num { background: #000; color: #fff; }
   ul { list-style: none; }
-  li { display: flex; border-bottom: 1px solid #ddd; }
-  .tab { width: 6px; flex-shrink: 0; }
-  .body { padding: 8px 10px; }
-  .subject { font-size: 11px; color: #666; }
+  li { display: flex; font-size: 12px; margin: 0 4px 2px; }
+  .tab { width: 4px; flex-shrink: 0; }
+  .title { padding: 1px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .done .title { text-decoration: line-through; color: #999; }
-  .dday { font-size: 11px; margin-left: 6px; }
   @media (max-width: 700px) {
-    .week { grid-template-columns: 1fr; min-height: 0; }
-    .day { border-right: 0; border-bottom: 1px solid #000; }
+    .cell { min-height: 72px; }
+    li { font-size: 10px; margin: 0 2px 2px; }
+    .title { padding: 0 3px; }
   }
 </style>
 </head>
 <body>
 <header>
-  <h1 id="range"></h1>
-  <nav><button id="prev" aria-label="지난 주">←</button><button id="now">이번 주</button><button id="next" aria-label="다음 주">→</button></nav>
+  <h1 id="month"></h1>
+  <nav><button id="prev" aria-label="지난 달">←</button><button id="now">이번 달</button><button id="next" aria-label="다음 달">→</button></nav>
 </header>
-<main class="week" id="week"></main>
+<main class="grid" id="cal"></main>
 <script src="data.js"></script>
 <script>
-const DAY = 86400000;
-const NAMES = ['월', '화', '수', '목', '금'];
+const NAMES = ['월', '화', '수', '목', '금', '토', '일'];
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const md = d => `${d.getMonth() + 1}/${d.getDate()}`;
 const today = new Date(); today.setHours(0, 0, 0, 0);
-const thisMonday = new Date(today - ((today.getDay() + 6) % 7) * DAY);
 let offset = 0;
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+function cell(d, month) {
+  const key = iso(d);
+  const items = TASKS.filter(t => t.date === key).map(t =>
+    `<li class="${t.done ? 'done' : ''}" title="${esc(t.subject || '')}"><span class="tab" style="background:${SUBJECTS[t.subject] || '#000'}"></span><span class="title">${esc(t.title)}</span></li>`
+  ).join('');
+  const cls = d.getMonth() !== month ? 'out' : key === iso(today) ? 'today' : d < today ? 'past' : '';
+  return `<div class="cell ${cls}"><span class="num">${d.getDate()}</span><ul>${items}</ul></div>`;
+}
+
 function render() {
-  const mon = new Date(thisMonday.getTime() + offset * 7 * DAY);
-  mon.setHours(0, 0, 0, 0);
-  const days = NAMES.map((_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
-  document.getElementById('range').textContent = `${md(days[0])} – ${md(days[4])}`;
-  const html = days.map((d, i) => {
-    const key = iso(d);
-    const items = TASKS.filter(t => t.date === key).map(t => {
-      const diff = Math.round((d - today) / DAY);
-      const dday = !t.done && diff >= 0 ? `<span class="dday">${diff === 0 ? 'D-day' : 'D-' + diff}</span>` : '';
-      return `<li class="${t.done ? 'done' : ''}"><span class="tab" style="background:${SUBJECTS[t.subject] || '#000'}"></span>
-        <div class="body"><div class="subject">${esc(t.subject || '')}</div><div class="title">${esc(t.title)}${dday}</div></div></li>`;
-    }).join('');
-    const cls = key === iso(today) ? 'today' : d < today ? 'past' : '';
-    return `<section class="day ${cls}"><h2><span>${NAMES[i]}</span><span>${md(d)}</span></h2><ul>${items}</ul></section>`;
-  }).join('');
-  document.getElementById('week').innerHTML = html;
+  const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const month = first.getMonth();
+  document.getElementById('month').textContent = `${first.getFullYear()}. ${month + 1}`;
+  const start = new Date(first);
+  start.setDate(1 - (first.getDay() + 6) % 7);
+  const days = [];
+  const last = new Date(first.getFullYear(), month + 1, 0);
+  for (let d = new Date(start); d <= last || days.length % 7; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+  document.getElementById('cal').innerHTML =
+    NAMES.map(n => `<div class="head">${n}</div>`).join('') + days.map(d => cell(d, month)).join('');
 }
 
 document.getElementById('prev').onclick = () => { offset--; render(); };
