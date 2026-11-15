@@ -8,7 +8,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #fff; color: #000; font-family: "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", sans-serif; font-size: 19px; line-height: 1.17; }
   .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
-  select { width: 100%; font: 11px Arial, sans-serif; margin-bottom: 28px; }
+  h1 { font: inherit; }
   .row { display: grid; grid-template-columns: 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; cursor: text; }
   .m, .d { text-align: right; }
   .first { margin-top: 1.17em; }
@@ -18,11 +18,12 @@
   .row.editing, .row.editing:hover { background: #fff; color: #000; }
   textarea { font: inherit; color: inherit; width: 100%; border: 0; border-bottom: 1px solid #000; outline: 0; resize: none; background: none; display: block; }
   .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; align-items: center; font: 11px Arial, sans-serif; }
+  @media (max-width: 600px) { .row { grid-template-columns: 22px 22px 1fr; column-gap: 10px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <select id="jump" aria-label="달 이동"></select>
+  <h1 id="ym"></h1>
   <main id="list"></main>
 </div>
 <div class="bar"><span id="status"></span></div>
@@ -57,15 +58,11 @@ function render() {
   const endKey = [dates.at(-1), iso(new Date(today.getFullYear(), today.getMonth() + 1, 1))].filter(Boolean).sort().at(-1);
   const [sy, sm] = startKey.split('-').map(Number);
   const [ey, em] = endKey.split('-').map(Number);
-  const rows = [], months = [];
+  const rows = [];
   for (let d = new Date(sy, sm - 1, 1), end = new Date(ey, em, 0); d <= end; d.setDate(d.getDate() + 1)) {
-    if (d.getDate() === 1) months.push(`<option value="d${iso(d)}">${d.getFullYear()}. ${d.getMonth() + 1}</option>`);
     rows.push(row(d));
   }
   document.getElementById('list').innerHTML = rows.join('');
-  const jump = document.getElementById('jump');
-  jump.innerHTML = months.join('');
-  jump.value = `d${todayKey.slice(0, 8)}01`;
 }
 
 // 한 줄 = 「과목 - 일정」. 「 - 」가 없으면 과목 없이 일정만.
@@ -132,8 +129,8 @@ document.getElementById('list').addEventListener('click', e => {
   const r = e.target.closest('.row');
   if (r) edit(r);
 });
-document.getElementById('jump').onchange = e => document.getElementById(e.target.value).scrollIntoView();
 const goToday = () => document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'center' });
+document.getElementById('ym').textContent = `${String(today.getFullYear()).slice(2)}.${today.getMonth() + 1}`;
 render();
 goToday();
 
