@@ -15,6 +15,7 @@
   .past { color: #999; }
   .today .d { text-decoration: underline; text-underline-offset: 3px; }
   .row:hover { background: #000; color: #fff; }
+  .s { margin-left: 1em; }
   .done .t { text-decoration: line-through; }
   .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; }
   .bar button { font: 11px Arial, sans-serif; }
@@ -37,7 +38,7 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<':
 function row(d) {
   const key = iso(d);
   const tasks = TASKS.filter(t => t.date === key);
-  const titles = tasks.map(t => `<div class="${t.done ? 'done' : ''}"><span class="t">${esc(t.title)}</span></div>`).join('') || '-';
+  const titles = tasks.map(t => `<div class="${t.done ? 'done' : ''}"><span class="t">${esc(t.title)}</span><span class="s">${esc(t.subject || "")}</span></div>`).join('') || '-';
   const first = d.getDate() === 1;
   const cls = [first ? 'first' : '', key === todayKey ? 'today' : key < todayKey ? 'past' : ''].join(' ');
   return `<div class="row ${cls}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><div>${titles}</div></div>`;

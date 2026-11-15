@@ -1,4 +1,4 @@
-// 할 일은 여기만 고치면 됨. date: "YYYY-MM-DD". subject는 기록용(화면엔 안 보임).
+// 할 일은 여기만 고치면 됨. date: "YYYY-MM-DD". subject는 제목 뒤에 붙음.
 
 const TASKS = [
   { date: "2026-11-18", subject: "웹앱디자인", title: "하루 끝까지 개발" },
