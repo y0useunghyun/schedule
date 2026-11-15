@@ -9,15 +9,16 @@
   body { background: #fff; color: #000; font-family: "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", sans-serif; font-size: 19px; line-height: 1.17; }
   .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
   select { width: 100%; font: 11px Arial, sans-serif; margin-bottom: 28px; }
-  .row { display: grid; grid-template-columns: 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .row { display: grid; grid-template-columns: 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; cursor: text; }
   .m, .d { text-align: right; }
   .first { margin-top: 1.17em; }
   .past { color: #999; }
   .today .d { text-decoration: underline; text-underline-offset: 3px; }
   .row:hover { background: #000; color: #fff; }
-  .done .t { text-decoration: line-through; }
-  .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; }
-  .bar button { font: 11px Arial, sans-serif; }
+  .row.editing, .row.editing:hover { background: #fff; color: #000; }
+  textarea { font: inherit; color: inherit; width: 100%; border: 0; border-bottom: 1px solid #000; outline: 0; resize: none; background: none; display: block; }
+  .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; align-items: center; font: 11px Arial, sans-serif; }
+  .bar button { font: inherit; }
 </style>
 </head>
 <body>
@@ -25,44 +26,128 @@
   <select id="jump" aria-label="달 이동"></select>
   <main id="list"></main>
 </div>
-<div class="bar"><button id="top">back to top</button><button id="now">today</button><button onclick="location.href='https://github.com/y0useunghyun/schedule/edit/main/data.js'">edit</button></div>
+<div class="bar"><button id="top">back to top</button><button id="now">today</button><span id="status"></span></div>
 <script src="data.js"></script>
 <script>
+const REPO = 'y0useunghyun/schedule';
+const API = `https://api.github.com/repos/${REPO}/contents/data.js`;
+const TOKEN_KEY = 'schedule-token';
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = new Date(); today.setHours(0, 0, 0, 0);
 const todayKey = iso(today);
+let tasks = TASKS;
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+const line = t => (t.subject ? `${t.subject} - ` : '') + t.title;
+const status = s => { document.getElementById('status').textContent = s; };
+function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
+function setToken(v) { try { localStorage.setItem(TOKEN_KEY, v); } catch {} }
 
 function row(d) {
   const key = iso(d);
-  const tasks = TASKS.filter(t => t.date === key);
-  const titles = tasks.map(t => `<div class="${t.done ? 'done' : ''}"><span class="t">${t.subject ? esc(t.subject) + " - " : ""}${esc(t.title)}</span></div>`).join('') || '-';
+  const titles = tasks.filter(t => t.date === key).map(t => `<div>${esc(line(t))}</div>`).join('') || '-';
   const first = d.getDate() === 1;
   const cls = [first ? 'first' : '', key === todayKey ? 'today' : key < todayKey ? 'past' : ''].join(' ');
-  return `<div class="row ${cls}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><div>${titles}</div></div>`;
+  return `<div class="row ${cls}" data-date="${key}" id="d${key}"><span class="m">${first ? d.getMonth() + 1 : ''}</span><span class="d">${d.getDate()}</span><div class="c">${titles}</div></div>`;
 }
 
 // 범위: 이번 달(또는 가장 이른 일정의 달) 1일 ~ 다음 달(또는 가장 늦은 일정의 달) 말일
-const dates = TASKS.map(t => t.date).sort();
-const startKey = [dates[0], todayKey].filter(Boolean).sort()[0];
-const endKey = [dates.at(-1), iso(new Date(today.getFullYear(), today.getMonth() + 1, 1))].filter(Boolean).sort().at(-1);
-const [sy, sm] = startKey.split('-').map(Number);
-const [ey, em] = endKey.split('-').map(Number);
-const rows = [], months = [];
-for (let d = new Date(sy, sm - 1, 1), end = new Date(ey, em, 0); d <= end; d.setDate(d.getDate() + 1)) {
-  if (d.getDate() === 1) months.push(`<option value="d${iso(d)}">${d.getFullYear()}. ${d.getMonth() + 1}</option>`);
-  rows.push(row(d));
+function render() {
+  const dates = tasks.map(t => t.date).sort();
+  const startKey = [dates[0], todayKey].filter(Boolean).sort()[0];
+  const endKey = [dates.at(-1), iso(new Date(today.getFullYear(), today.getMonth() + 1, 1))].filter(Boolean).sort().at(-1);
+  const [sy, sm] = startKey.split('-').map(Number);
+  const [ey, em] = endKey.split('-').map(Number);
+  const rows = [], months = [];
+  for (let d = new Date(sy, sm - 1, 1), end = new Date(ey, em, 0); d <= end; d.setDate(d.getDate() + 1)) {
+    if (d.getDate() === 1) months.push(`<option value="d${iso(d)}">${d.getFullYear()}. ${d.getMonth() + 1}</option>`);
+    rows.push(row(d));
+  }
+  document.getElementById('list').innerHTML = rows.join('');
+  const jump = document.getElementById('jump');
+  jump.innerHTML = months.join('');
+  jump.value = `d${todayKey.slice(0, 8)}01`;
 }
-document.getElementById('list').innerHTML = rows.join('');
-const jump = document.getElementById('jump');
-jump.innerHTML = months.join('');
-jump.value = `d${todayKey.slice(0, 8)}01`;
-jump.onchange = () => document.getElementById(jump.value).scrollIntoView();
+
+// 한 줄 = 「과목 - 일정」. 「 - 」가 없으면 과목 없이 일정만.
+function parse(date, text) {
+  return text.split('\n').map(s => s.trim()).filter(Boolean).map(s => {
+    const i = s.indexOf(' - ');
+    return i > 0 ? { date, subject: s.slice(0, i).trim(), title: s.slice(i + 3).trim() } : { date, subject: '', title: s };
+  });
+}
+
+function toFile(list) {
+  const sorted = [...list].sort((a, b) => a.date.localeCompare(b.date));
+  return `// 사이트에서 날짜 줄을 눌러 고치면 이 파일이 자동으로 바뀜. 형식: JSON 배열.\nconst TASKS = [\n${sorted.map(t => JSON.stringify(t)).join(',\n')}\n];\n`;
+}
+
+const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+
+async function save(next) {
+  let token = getToken();
+  if (!token) {
+    token = (prompt('처음 한 번만: GitHub 토큰을 붙여넣어 주세요') || '').trim();
+    if (!token) { status('저장 안 됨'); return false; }
+    setToken(token);
+  }
+  status('저장 중…');
+  const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
+  try {
+    const cur = await fetch(API, { headers, cache: 'no-store' });
+    if (cur.status === 401) { setToken(''); throw new Error('토큰이 맞지 않아요'); }
+    if (!cur.ok) throw new Error(`불러오기 실패 ${cur.status}`);
+    const { sha } = await cur.json();
+    const res = await fetch(API, { method: 'PUT', headers, body: JSON.stringify({ message: 'data: 사이트에서 수정', content: b64(toFile(next)), sha }) });
+    if (!res.ok) throw new Error(`저장 실패 ${res.status}`);
+    status('저장됨');
+    return true;
+  } catch (e) {
+    status(e.message);
+    return false;
+  }
+}
+
+function edit(rowEl) {
+  if (rowEl.classList.contains('editing')) return;
+  const date = rowEl.dataset.date;
+  const before = tasks.filter(t => t.date === date).map(line).join('\n');
+  const ta = document.createElement('textarea');
+  ta.value = before;
+  ta.placeholder = '과목 - 일정';
+  ta.rows = Math.max(1, before.split('\n').length + 1);
+  ta.oninput = () => { ta.rows = Math.max(1, ta.value.split('\n').length + 1); };
+  rowEl.classList.add('editing');
+  rowEl.querySelector('.c').replaceChildren(ta);
+  ta.focus();
+  ta.onblur = async () => {
+    if (ta.value.trim() === before.trim()) { render(); return; }
+    const prev = tasks;
+    tasks = [...tasks.filter(t => t.date !== date), ...parse(date, ta.value)];
+    render();
+    if (!(await save(tasks))) { tasks = prev; render(); }
+  };
+}
+
+document.getElementById('list').addEventListener('click', e => {
+  const r = e.target.closest('.row');
+  if (r) edit(r);
+});
+document.getElementById('jump').onchange = e => document.getElementById(e.target.value).scrollIntoView();
 document.getElementById('top').onclick = () => scrollTo(0, 0);
 const goToday = () => document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'center' });
 document.getElementById('now').onclick = goToday;
+render();
 goToday();
+
+// 토큰이 있으면 GitHub에서 최신본을 바로 받아옴(Pages 반영 1분 대기 없이)
+const token = getToken();
+if (token) {
+  fetch(API, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.raw' }, cache: 'no-store' })
+    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(txt => { tasks = JSON.parse(txt.slice(txt.indexOf('['), txt.lastIndexOf(']') + 1)); render(); })
+    .catch(() => {});
+}
 </script>
 </body>
 </html>
