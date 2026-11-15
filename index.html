@@ -10,12 +10,11 @@
   .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
   select { width: 100%; font: 11px Arial, sans-serif; margin-bottom: 28px; }
   .row { display: grid; grid-template-columns: 34px 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; }
-  .arrows { margin-bottom: 2px; }
   .m, .d { text-align: right; }
   .first { margin-top: 1.17em; }
   .past { color: #999; }
   .today .d { text-decoration: underline; text-underline-offset: 3px; }
-  .row:not(.arrows):hover { background: #000; color: #fff; }
+  .row:hover { background: #000; color: #fff; }
   .tags { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
   .tag { font: 10px/1 Arial, sans-serif; border: 1px solid currentColor; border-radius: 99px; padding: 1px 4px; white-space: nowrap; position: relative; top: -2px; }
   .done .t { text-decoration: line-through; }
@@ -26,7 +25,6 @@
 <body>
 <div class="wrap">
   <select id="jump" aria-label="달 이동"></select>
-  <div class="row arrows"><span></span><span class="m">↓</span><span class="d">↓</span><span>↓</span></div>
   <main id="list"></main>
 </div>
 <div class="bar"><button id="top">back to top</button><button id="now">today</button></div>
