@@ -65,7 +65,7 @@ function render() {
     const cls = key === iso(today) ? 'today' : d < today ? 'past' : '';
     return `<section class="day ${cls}"><h2><span>${NAMES[i]}</span><span>${md(d)}</span></h2><ul>${items}</ul></section>`;
   }).join('');
-  document.getElementById('week').innerHTML = TASKS.length ? html : '<p class="empty">이번 주 과제를 알려주세요</p>' ;
+  document.getElementById('week').innerHTML = html;
 }
 
 document.getElementById('prev').onclick = () => { offset--; render(); };
