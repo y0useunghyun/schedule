@@ -87,7 +87,7 @@ const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 async function save(next) {
   let token = getToken();
   if (!token) {
-    token = (prompt('처음 한 번만: GitHub 토큰을 붙여넣어 주세요') || '').trim();
+    token = (prompt('열쇠를 붙여넣어 주세요') || '').trim();
     if (!token) { status('저장 안 됨'); return false; }
     setToken(token);
   }
@@ -95,7 +95,7 @@ async function save(next) {
   const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
   try {
     const cur = await fetch(API, { headers, cache: 'no-store' });
-    if (cur.status === 401) { setToken(''); throw new Error('토큰이 맞지 않아요'); }
+    if (cur.status === 401) { setToken(''); throw new Error('열쇠가 맞지 않아요'); }
     if (!cur.ok) throw new Error(`불러오기 실패 ${cur.status}`);
     const { sha } = await cur.json();
     const res = await fetch(API, { method: 'PUT', headers, body: JSON.stringify({ message: 'data: 사이트에서 수정', content: b64(toFile(next)), sha }) });
