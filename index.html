@@ -25,7 +25,7 @@
   <select id="jump" aria-label="달 이동"></select>
   <main id="list"></main>
 </div>
-<div class="bar"><button id="top">back to top</button><button id="now">today</button></div>
+<div class="bar"><button id="top">back to top</button><button id="now">today</button><button onclick="location.href='https://github.com/y0useunghyun/schedule/edit/main/data.js'">edit</button></div>
 <script src="data.js"></script>
 <script>
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
