@@ -7,24 +7,27 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #fff; color: #000; font-family: "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", sans-serif; font-size: 19px; line-height: 1.17; }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
+  body { background: #fff; color: #000; font-family: "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", sans-serif; font-size: 19px; line-height: 1.17; word-break: keep-all; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px 100vh; }
   h1 { font: inherit; }
-  .row { display: grid; grid-template-columns: 30px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; cursor: text; }
+  .head { position: sticky; top: 0; z-index: 1; background: #fff; padding: 32px 0 1.17em; cursor: default; }
+  .head .m { white-space: nowrap; margin-left: -3em; }
+  #list .row { scroll-margin-top: calc(32px + 2.34em); }
+  .row { display: grid; grid-template-columns: 56px 34px 1fr; column-gap: 20px; align-items: baseline; font-variant-numeric: tabular-nums; cursor: text; }
   .m, .d { text-align: right; }
   .first { margin-top: 1.17em; }
   .past { color: #999; }
   .today .d { text-decoration: underline; text-underline-offset: 3px; }
-  .row:hover { background: #000; color: #fff; }
+  #list .row:hover { background: #000; color: #fff; }
   .row.editing, .row.editing:hover { background: #fff; color: #000; }
   textarea { font: inherit; color: inherit; width: 100%; border: 0; border-bottom: 1px solid #000; outline: 0; resize: none; background: none; display: block; }
   .bar { position: fixed; left: 16px; bottom: 12px; display: flex; gap: 4px; align-items: center; font: 11px Arial, sans-serif; }
-  @media (max-width: 600px) { .row { grid-template-columns: 22px 22px 1fr; column-gap: 10px; } }
+  @media (max-width: 600px) { .row { grid-template-columns: 48px 22px 1fr; column-gap: 10px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1 id="ym"></h1>
+  <h1 class="row head"><span class="m" id="ym"></span></h1>
   <main id="list"></main>
 </div>
 <div class="bar"><span id="status"></span></div>
@@ -130,10 +133,19 @@ document.getElementById('list').addEventListener('click', e => {
   const r = e.target.closest('.row');
   if (r) edit(r);
 });
-const goToday = () => document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'center' });
-document.getElementById('ym').textContent = `${String(today.getFullYear()).slice(2)}.${today.getMonth() + 1}`;
+const goToday = () => document.getElementById('d' + todayKey)?.scrollIntoView({ block: 'start' });
+// 위 「26.11」은 지금 맨 위에 걸린 줄의 달을 따라감
+const ym = document.getElementById('ym');
+function updateYm() {
+  const head = ym.closest('.head').getBoundingClientRect();
+  const r = document.elementFromPoint(head.left + 4, head.bottom + 4)?.closest('#list .row');
+  const [y, m] = (r ? r.dataset.date : todayKey).split('-');
+  ym.textContent = `${y.slice(2)}.${Number(m)}`;
+}
+addEventListener('scroll', updateYm, { passive: true });
 render();
 goToday();
+updateYm();
 
 // 토큰이 있으면 GitHub에서 최신본을 바로 받아옴(Pages 반영 1분 대기 없이)
 const token = getToken();
