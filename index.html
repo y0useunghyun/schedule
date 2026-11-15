@@ -114,7 +114,6 @@ function edit(rowEl) {
   const before = tasks.filter(t => t.date === date).map(line).join('\n');
   const ta = document.createElement('textarea');
   ta.value = before;
-  ta.placeholder = '과목 - 일정';
   ta.rows = Math.max(1, before.split('\n').length + 1);
   ta.oninput = () => { ta.rows = Math.max(1, ta.value.split('\n').length + 1); };
   rowEl.classList.add('editing');
